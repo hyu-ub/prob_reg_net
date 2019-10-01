@@ -19,6 +19,12 @@ gene.info <- extractGeneAssociations(Recon2)
 sbml.model <- buildSBMLFromReactionIDs(reaction.ids, Recon2)
 genes.in.rx <- gene.info[reaction.ids]
 
+###################################################
+## Set the group: control or AD
+###################################################
+
+group <- "AD" #  options: "control", "AD"
+
 ##########################################################
 ## map genes to the reactions
 ##########################################################
@@ -112,7 +118,11 @@ graph.3 <- pcalg::pdag2dag(hif.graph.2, keepVstruct = FALSE)[[1]]
 
 genes <- as.character(brain_dats$SYMBOL)
 ## get the expression data for control or AD group
-dat <- t(brain_dats[, 19:28])  ## 6:18 control; 19:28 AD
+if (group == "AD") {
+  dat <- t(brain_dats[, 19:28])  ## 6:18 control; 19:28 AD
+} else {
+  dat <- t(brain_dats[, 6:18])
+}
 
 s <- c()
 for (i in 1:length(symbols.in.both)) {
@@ -135,11 +145,14 @@ rownames(df) <- NULL
 node.class <- rep(FALSE, length(symbols.in.both))
 names(node.class) <- symbols.in.both
 
-# initialize the AD model
-tree.init.ad <- Initializer(graph.3, df, node.class) 
+if (group == "AD") {
+  # initialize the AD model
+  tree.init.ad <- Initializer(graph.3, df, node.class) 
+} else {
+  # initialize the Control model, need to update the df
+  tree.init.ctrl <- Initializer(graph.3, df, node.class) 
+}
 
-# initialize the Control model, need to update the df
-# tree.init.ctrl <- Initializer(graph.3, df, node.class) 
 SummaryMarginals(Marginals(tree.init.ad, "HIF1A"))
 
 ##########################################################
@@ -161,7 +174,9 @@ for (i in 1:length(symbols.rx)) {
 names(constraint.rx) <- rx
 
 ##########################################################
-## save file
+## Before saving the files, run above codes for control 
+## and AD group separately,
+## so that both tree.init.ctrl and tree.init.ad are generated
 ##########################################################
 
 save(tree.init.ctrl, tree.init.ad, constraint.rx, file="temp.rda")
